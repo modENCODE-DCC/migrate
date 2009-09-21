@@ -63,7 +63,7 @@ while (<$gfffh>) {
 	my $featureloc = $rec->write_featureloc($doc, $organism);	
 	$feature->appendChild($featureloc);
 	if ($rec->get_type() eq 'CDS') {
-	    my $pep = $rec->write_polypeptide($doc, $organism);
+	    my $pep = $rec->write_polypeptide($doc, $organism, 'force');
 	    $last_pep = $pep;
 	}
 	$last_feature = $feature;	
