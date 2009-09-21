@@ -135,8 +135,7 @@ sub write_srcfeature {
 											  db => 'SO',
 											  accession => '0000340')),
 				organism_id => $organism->getAttribute('id'),
-				macro_id => $self->get_seqid(),
-				with_id => 1);
+				macro_id => $self->get_seqid());
     return $ele;    
 }
 
@@ -225,7 +224,7 @@ sub write_feature_relationship {
 }
 
 sub write_polypeptide {
-    my ($self, $doc, $organism) = @_;    
+    my ($self, $doc, $organism, $op) = @_;    
     croak('this is not a CDS feature! peptide could only derived from CDS!') unless $self->get_type() eq 'CDS';
     if ($self->get_peptide()) {
 	#create a polypeptide feature
@@ -239,6 +238,7 @@ sub write_polypeptide {
 												  accession => '0000104')),
 					organism_id => $organism->getAttribute('id'),
 					macro_id => $self->get_peptide());
+	$feature->setAttribute('op', $op) if $op;
         #create a CDS-polypeptide feature_relationship
 	my $fr = create_ch_fr(doc => $doc,
 			      organism_id => $organism->getAttribute('id'),
