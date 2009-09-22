@@ -26,13 +26,15 @@ my $organism = $worm->write_organism($doc);
 $root->appendChild($organism);
 
 #######need auto-generate ID###############
-my $prefix='5utr-auto';
+my $prefix='_5utr-auto';
 my $i=1;
 while (<$gfffh>) {
     chomp $_;
     next if $_ =~ /^#/ || $_ =~ /^\s*$/;
     my $rec = new GFF3::GFF3Rec({line => $_});
-    my $id = $prefix . "$i";
+    my $parent_id = $rec->get_Parent()->[0];
+    $parent_id =~ s/^\w*://;
+    my $id = $parent_id . $prefix . "$i";
     $rec->set_ID($id);
     #testing
     #print $rec->get_seqid(), "\t";
