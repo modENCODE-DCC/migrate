@@ -35,13 +35,15 @@ my $db = Ace->connect(-host => $host, -port => $port)
     || croak("Couldn't open database at host $host port $port");
 
 while (<$gfffh>) {
+    chomp;
+    next if $_ =~ /^\s*$/ || $_ =~ /^#/;
     my $rec = new GFF3::GFF3Rec({line => $_});
     my $id = $rec->get_ID();
     $id =~ s/^Gene://;
     my $wb_gene = $db->fetch($class, $id);
     #print $wb_gene->asTable;
     my $gene = new Model::Gene({gene => $wb_gene});
-    my $feature = $gene->write_feature($doc, $organism);
+    my $feature = $gene->write_feature($doc, $organism, 'update');
     $root->appendChild($feature);
 }
 
