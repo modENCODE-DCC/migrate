@@ -14,7 +14,7 @@ open my $gfffh, "<", $gfffile;
 
 #need to be a tmpfile in the future
 my$xmlfile = $ARGV[1];
-open my $xmlfh, ">>", $xmlfile;
+open my $xmlfh, ">", $xmlfile;
 
 my $doc = new XML::DOM::Document;
 my $root = $doc->createElement("chado");
