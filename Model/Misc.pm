@@ -8,7 +8,7 @@ use XML::DOM;
 use Chado::WriteChadoMac;
 use Chado::PrettyPrintDom;
 
-sub read {
+sub read_cvterm {
     my ($self, $cvtermfile) = @_;
     my @cvs;
     my @dbs;
@@ -30,7 +30,39 @@ sub read {
     return (\@cvs, \@dbs, \@cvts);
 }
 
-sub write {
+sub read_pub {
+    my ($self, $pubfile) = @_;
+    open my $pubfh, "<", $pubfile;
+    my @pub;
+    while (<$pubfh>) {
+	chomp;
+	next if $_ =~ /^\s*$/;
+	next if $_ =~ /^#/;
+	my @fields = split "\t";
+	print @fields;
+	push @pub, \@fields;
+    }
+    close $pubfh;
+    return @pub;
+}
+
+sub write_pub {
+    my ($self, $xmlfile, $pub) = @_;
+    open my $xmlfh, ">", $xmlfile;
+    my $doc = new XML::DOM::Document;
+    my $root = $doc->createElement("chado");
+    for my $p (@$pub) {
+	my $uniquename = $p->[0];
+	my $type = $p->[1];
+	my $pub_ele = $self->add_pub($doc, $uniquename, $type);
+	$root->appendChild($pub_ele);
+    }
+    $doc->appendChild($root);
+    pretty_print($root, $xmlfh);     
+    close $xmlfh;    
+}
+
+sub write_cvterm {
     my ($self, $xmlfile, $cvs, $dbs, $cvts) = @_;
     open my $xmlfh, ">", $xmlfile;
     my $doc = new XML::DOM::Document;
@@ -84,5 +116,16 @@ sub add_cvterm {
 			       no_lookup => 1);
     return $ele;
 }
+
+sub add_pub {
+    my ($self, $doc, $uniquename, $type, $op) = @_;
+    $op = 'insert' unless $op; 
+    my $ele = create_ch_pub(doc => $doc,
+			    uniquename => $uniquename,
+			    type => $type);
+    $ele->setAttribute('op', $op);
+    return $ele;
+}
+
 
 1;
