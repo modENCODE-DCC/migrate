@@ -9,6 +9,7 @@ use Class::Std;
 use Ace;
 use Chado::WriteChadoMac;
 use Chado::PrettyPrintDom;
+use Model::WormMartTools;
 
 use Model::Worm;
 use Model::DBXref;
@@ -21,6 +22,9 @@ my %name            :ATTR( :set<name>          :default<undef> );
 my %public_name     :ATTR( :set<public_name>   :default<undef> );
 my %worm            :ATTR( :set<worm>          :default<undef> );
 my %default_dbname  :ATTR(                     :default<'RefSeq'>);
+my %go_accs         :ATTR( :get<go_accs>       :default<{}>);
+#my %go_accs         :ATTR( :get<go_accs>       :default<[]>);
+#my %go_codes        :ATTR( :get<go_codes>      :default<[]>);
 
 sub BUILD {
     my ($self, $ident, $args) = @_;
@@ -161,6 +165,42 @@ sub get_pseudogene {
 	push @pseudogene, new Model::Pseudogene({pseudogene => $pseudogene});
     }
     return @pseudogene;    
+}
+
+sub set_go_accs {
+    my $self = shift;
+    my @go_accs = names_at($gene{ident $self}, 'Gene_info.GO_term');
+    my @go_codes = names_at($gene{ident $self}, 'Gene_info.GO_term.?GO_term.XREF.Gene.?GO_code');
+    for(my $i=0; $i<scalar @go_accs; $i++) {
+	$go_accs{ident $self}->{$go_accs[$i]} = $go_codes[$i];
+    }
+}
+
+#sub set_go_codes {
+#    my $self = shift;
+#    my @go_codes = names_at($gene{ident $self}, 'Gene_info.GO_term.?GO_term.XREF.Gene.?GO_code');
+#    $go_codes{ident $self}->{$} = \@go_codes;
+#}
+
+sub write_goterms {
+    my ($self, $doc, $feature, $go) = @_;
+    my @fcs;
+    while ( my ($go_acc, $go_code) = each %{$self->get_go_accs()} ) {
+	my $cvterm = $go->write_cvterm($doc, $go_acc);
+	my $id = "feature_cvterm_goterm_$go_acc";
+	my $fc = create_ch_feature_cvterm(doc => $doc,
+					  feature_id => $feature->getAttribute('id'),
+					  cvterm_id => $cvterm,
+					  pub => 'WormBase');
+	$fc->setAttribute('id', $id);
+	my $fcp = create_ch_feature_cvtermprop(doc => $doc,
+					       feature_cvterm_id => $id,
+					       type => 'evidence name',
+					       cvname => 'WormBase miscellaneous CV',
+					       value => $go_code);
+	push @fcs, [$fc, $fcp];
+    }
+    return @fcs;
 }
 
 1;
