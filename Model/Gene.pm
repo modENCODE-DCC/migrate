@@ -170,7 +170,9 @@ sub get_pseudogene {
 sub set_go_accs {
     my $self = shift;
     my @go_accs = names_at($gene{ident $self}, 'Gene_info.GO_term');
+    print "###num of go terms ", scalar @go_accs, " ";
     my @go_codes = names_at($gene{ident $self}, 'Gene_info.GO_term.?GO_term.XREF.Gene.?GO_code');
+    print "###num of go codes ", scalar @go_codes;
     for(my $i=0; $i<scalar @go_accs; $i++) {
 	$go_accs{ident $self}->{$go_accs[$i]} = $go_codes[$i];
     }
