@@ -1,6 +1,6 @@
 # A grab-bag of Ace convenience accessors and caches used to help with
 # object loader modules 
-package WormMartTools;
+package Model::WormMartTools;
 
 use strict;
 use warnings;
