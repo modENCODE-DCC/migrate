@@ -21,11 +21,15 @@ sub BUILD {
     $graph{ident $self} = $parser{ident $self}->handler->graph;
 }
 
+sub get_name {
+    my ($self, $acc) = @_;
+    return $graph{ident $self}->get_term($acc)->name;
+}
 sub write_cvterm {
     my ($self, $doc, $acc) = @_;
     my $term = $graph{ident $self}->get_term($acc);
-    my $namespace = $term->namespace;
     my $name = $term->name;
+    my $namespace = $term->namespace;
     if ($term->is_obsolete()) {
 	$name .= " (obsolete $acc)";
     }
