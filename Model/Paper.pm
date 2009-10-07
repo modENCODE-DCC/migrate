@@ -1,13 +1,15 @@
 package Model::Paper;
-
+##############################Journal/author relationship##################
 use strict;
 use Carp;
 use Data::Dumper;
 use Class::Std;
 use Ace;
 use Chado::WriteChadoMac;
+use Model::WormMartTools;
 
 my %paper                 :ATTR( :name<paper>                :default<undef>);
+my %type                  :ATTR( :name<type>                 :default<undef>);
 my %uniquename            :ATTR( :name<uniquename>           :default<undef>);
 my %title                 :ATTR( :name<title>                :default<undef>);
 my %publisher             :ATTR( :name<publisher>            :default<undef>);
@@ -15,7 +17,6 @@ my %volume                :ATTR( :name<volume>               :default<undef>);
 my %issue                 :ATTR( :name<issue>                :default<undef>);
 my %pyear                 :ATTR( :name<pyear>                :default<undef>);
 my %pages                 :ATTR( :name<pages>                :default<undef>);
-my %paper_is_obsolete     :ATTR( :name<paper_is_obsolete>    :default<undef>);
 my %miniref               :ATTR( :name<miniref>              :default<undef>);
 my %is_obsolete           :ATTR( :name<is_obsolete>          :default<undef>);
 my %info                  :ATTR( :name<info>                 :default<{}>);
@@ -66,9 +67,6 @@ sub BUILD {
 	'WORMBOOK' => 'wormbook'
     };
     $propertytypes{ident $self} = {
-	'Other name' => 'journal_other_name',
-	'Previous name' => 'journal_previous_name',
-	'URL' => 'URL',
 	'Abstract' => 'pubmed_abstract',
 	'Keyword' => 'wormbase keyword',
 	'Remark' => 'wormbase paper remark'	
@@ -133,10 +131,10 @@ sub read_paper {
     }
     if (defined($paper->Status)) {
         if ($paper->Status->name eq 'Valid') {
-            $self->set_paper_is_obsolete('f');
+            $self->set_is_obsolete('f');
 	    $info{ident $self}->{is_obsolete} = 'f';
         } else {
-	    $self->set_paper_is_obsolete('t');
+	    $self->set_is_obsolete('t');
 	    $info{ident $self}->{is_obsolete} = 't';
         }
     }
@@ -173,19 +171,11 @@ sub read_paper {
     my %property;
     for my $prop (keys %{$propertytypes{ident $self}}) {
 	if (defined($paper->$prop)) {
-	    foreach ($paper->$prop) {
-		$property{$propertytypes{ident $self}->{$prop}} = $paper->$prop->name;
-	    }
+	    my @tmp = names_at($paper, $prop);
+	    $property{$propertytypes{ident $self}->{$prop}} = \@tmp;	    
 	}
     }
-#    if (defined($paper->Abstract)) {
-#        if ($paper->Abstract->right->name) {
-#	    my $pp_el = create_ch_pubprop(doc => $doc,
-#					  type => $propertytypes{ident $self}->{Abstract},
-#					  value => $paper->Abstract->right->name);
-#	    $pub_el->appendChild($pp_el);
-#	}
-#    }
+    $self->set_property(\%property);
     
     if ( defined($paper->In_Book) ) {
 	$self->set_book($paper->In_Book);
@@ -195,7 +185,7 @@ sub read_paper {
 sub _read_book {
     my $self = shift;
     my $book = new Model::Paper();
-    $book->read_paper($paper{self->get_book);
+    $book->read_paper($self->get_book);
     $book->set_type('book');
     return $book;
 }
@@ -206,39 +196,44 @@ sub write_paper {
 
     #pub element
     my $pub_el = create_ch_pub(doc => $doc,
+			       macro_id => $self->get_uniquename,
                                %{$self->get_info()});
     $pub_el->setAttribute('op', $op) if $op;
+    push @pub, $pub_el;
 
     #pub_dbxref element
     if (%{$self->get_dbxref()}) {
 	while (my ($db, $accession) = each %{$self->get_dbxref()}) {
 	    my $pd_el = create_ch_pub_dbxref(doc => $doc,
+					     pub_id => $self->get_uniquename,
 					     db => $db,
 					     accession => $accession);     
-	    $pub_el->appendChild($pd_el); 
+	    push @pub, $pd_el;
 	}
     }
 
     #pubprop element
     if (%{$self->get_property()}) {
-	while (my ($type, $value) = each %{$self->get_property()}) {
-	    my $pd_el = create_ch_pubprop(doc => $doc,
-					  type => $type,
-					  value => $value);     
-	    $pub_el->appendChild($pd_el); 	
+	while (my ($type, $p) = each %{$self->get_property()}) {
+	    for my $value (@$p) {
+		next if $value eq $self->get_uniquename && $type eq 'pubmed_abstract'; #junk info
+		my $pp_el = create_ch_pubprop(doc => $doc,
+					      pub_id => $self->get_uniquename,
+					      type => $type,
+					      value => $value);     
+		push @pub, $pp_el;
+	    }
 	}
     }
 
-    push @pub, $pub_el;
-
     #Book element
     if ($self->get_book) {
-	$book = $self->_read_book();
-	$book_el = create_ch_pub(doc => $doc,
-				 %{$book->get_info()});
+	my $book = $self->_read_book();
+	my $book_el = create_ch_pub(doc => $doc,
+				    %{$book->get_info()});
 	push @pub, $book_el;
     }
-    return @pub_el;
+    return @pub;
 }
 
 sub write_pub_relationship {
