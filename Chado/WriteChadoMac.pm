@@ -2,7 +2,7 @@ package Chado::WriteChadoMac;
 
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT = qw(create_ch_organism create_ch_feature create_ch_dbxref create_ch_feature_dbxref create_ch_cvterm create_ch_db create_ch_contact create_ch_contactprop create_ch_fr create_ch_featureloc);
+our @EXPORT = qw(create_ch_pub_dbxref create_ch_pubprop create_ch_pub create_ch_organism create_ch_feature create_ch_cv create_ch_dbxref create_ch_feature_dbxref create_ch_cvterm create_ch_db create_ch_contact create_ch_contactprop create_ch_fr create_ch_featureloc create_ch_feature_cvterm create_ch_feature_cvtermprop);
 use strict;
 use XML::DOM;
 
