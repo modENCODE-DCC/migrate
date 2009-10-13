@@ -177,17 +177,40 @@ sub read_paper {
     }
     $self->set_property(\%property);
     
-    if ( defined($paper->In_Book) ) {
-	$self->set_book($paper->In_Book);
+    if ( defined($paper->In_book) ) {
+	my $book = $paper->In_book;
+	$self->set_book([$book]);
     }
 }
 
 sub _read_book {
     my $self = shift;
-    my $book = new Model::Paper();
-    $book->read_paper($self->get_book);
-    $book->set_type('book');
-    return $book;
+    my @books;
+    for my $book (@{$self->get_book}) {
+	my $xbook = new Model::Paper();
+	my ($title, $publisher);
+	if ( defined($book->Title) ) {
+	    $title = $book->Title->right->name;
+	} else {
+	    $title = $self->get_title();
+	}
+	$xbook->set_uniquename($title);
+	$info{ident $xbook}->{uniquename} = $title;
+	$xbook->set_title($title);
+	$info{ident $xbook}->{title} = $title;
+	if ( defined($book->Publisher) ) {
+	    $publisher = $book->Publisher->right->name;
+	}
+	$xbook->set_publisher($publisher) if defined($publisher);
+	$info{ident $xbook}->{publisher} = $publisher if defined($publisher);
+	if (defined ($book->Type)) {
+	    $xbook->set_type($selftypes{ident $self}->{$book->Type->right->name});
+	} else {
+	    $xbook->set_type('book');
+	}
+	push @books, $xbook;
+    }
+    return @books;
 }
 
 sub write_paper {
@@ -228,10 +251,11 @@ sub write_paper {
 
     #Book element
     if ($self->get_book) {
-	my $book = $self->_read_book();
-	my $book_el = create_ch_pub(doc => $doc,
-				    %{$book->get_info()});
-	push @pub, $book_el;
+	for my $book ($self->_read_book()) {
+	    my $book_el = create_ch_pub(doc => $doc,
+					%{$book->get_info()});
+	    push @pub, $book_el;
+	}
     }
     return @pub;
 }
