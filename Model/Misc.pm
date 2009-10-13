@@ -7,6 +7,32 @@ use Class::Std;
 use XML::DOM;
 use Chado::WriteChadoMac;
 use Chado::PrettyPrintDom;
+use Model::Paper;
+use Model::GO;
+
+my %cvs        :ATTR( :name<cvs>          :default<[]>);
+my %dbs        :ATTR( :name<dbs>          :default<[]>);
+my %cvts       :ATTR( :name<cvts>         :default<[]>);
+
+sub create_cvterm {
+    my ($self, $cvtermfile) = @_;
+    open my $cvtfh, ">", $cvtermfile;
+    my $p = new Model::Paper;
+    for my $type (values %{$p->get_selftypes()}) {
+	print $cvtfh join("\t", ('pub type', 'WormBase internal', $type, $type)), "\n";
+    }
+    for my $type (values %{$p->get_propertytypes()}) {
+	print $cvtfh join("\t", ('pubprop type', 'WormBase internal', $type, $type)), "\n";
+    }
+    for my $type (values %{$p->get_relationshiptypes()}) {
+	print $cvtfh join("\t", ('pub relationship type', 'WormBase internal', $type, $type)), "\n";
+    }
+    my $go = new Model::GO;
+    for my $typeref (@{$go->get_selftypes()}) {
+	print $cvtfh join("\t", @$typeref), "\n";
+    }
+    close($cvtfh);
+}
 
 sub read_cvterm {
     my ($self, $cvtermfile) = @_;
@@ -27,7 +53,9 @@ sub read_cvterm {
 	push @cvts, \@fields;
     }
     close $cvtfh;
-    return (\@cvs, \@dbs, \@cvts);
+    $self->set_cvs(\@cvs);
+    $self->set_dbs(\@dbs);
+    $self->set_cvts(\@cvts);
 }
 
 sub read_pub {
@@ -63,23 +91,22 @@ sub write_pub {
 }
 
 sub write_cvterm {
-    my ($self, $xmlfile, $cvs, $dbs, $cvts) = @_;
+    my ($self, $xmlfile) = @_;
     open my $xmlfh, ">", $xmlfile;
     my $doc = new XML::DOM::Document;
     my $root = $doc->createElement("chado");
 
-    for my $cv (@$cvs) {
+    for my $cv (@{$self->get_cvs()}) {
 	my $cv_ele = $self->add_cv($doc, $cv);
 	$root->appendChild($cv_ele);
     }
     
-    for my $db (@$dbs) {
-	print $db;
+    for my $db (@{$self->get_dbs()}) {
 	my $db_ele = $self->add_db($doc, $db);
 	$root->appendChild($db_ele);
     }
     
-    for my $cvt (@$cvts) {
+    for my $cvt (@{$self->get_cvts()}) {
 	my ($cv, $db, $acc, $cvterm) = @{$cvt};
 	my $cvt_ele = $self->add_cvterm($doc, $cv, $db, $acc, $cvterm);
 	$root->appendChild($cvt_ele);
