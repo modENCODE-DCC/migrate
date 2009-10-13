@@ -25,7 +25,7 @@ sub create_cvterm {
 	print $cvtfh join("\t", ('pubprop type', 'WormBase internal', $type, $type)), "\n";
     }
     for my $type (values %{$p->get_relationshiptypes()}) {
-	print $cvtfh join("\t", ('pub relationship type', 'WormBase internal', $type, $type)), "\n";
+	print $cvtfh join("\t", ('pub relationship type', 'WormBase internal', $type->[1], $type->[1])), "\n";
     }
     my $go = new Model::GO;
     for my $typeref (@{$go->get_selftypes()}) {
