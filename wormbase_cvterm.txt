@@ -1,3 +1,0 @@
-#fields are cv, db, db_accession, cvterm
-#fields separated by tab
-WormBase miscellaneous CV	WormBase internal	WormBase miscellaneous CV	evidence name
