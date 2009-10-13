@@ -10,13 +10,21 @@ use Chado::WriteChadoMac;
 use Chado::PrettyPrintDom;
 
 my %parser          :ATTR( :name<parser>         :default<undef> );
+my %go_obo_file     :ATTR( :name<go_obo_file>    :default<undef> );
 my %graph           :ATTR( :name<graph>          :default<undef> );
+my %selftypes       :ATTR( :name<selftypes>      :default<undef> );
 
 sub BUILD {
     my ($self, $ident, $args) = @_;
-    my $go_obo_file = $args->{'go_obo_file'};
+    $go_obo_file{ident $self} = $args->{'go_obo_file'};
+    $selftypes{ident $self} = [['WormBase miscellaneous CV', 'WormBase internal', 'WormBase miscellaneous CV',	'evidence name'],
+			       ['pub type', 'WormBase internal', 'pub type', 'database']];
+}
+
+sub parse {
+    my $self = shift;
     my $parser = new GO::Parser({handler=>'obj',use_cache=>1});
-    $parser->parse($go_obo_file);
+    $parser->parse($go_obo_file{ident $self});
     $parser{ident $self} = $parser;
     $graph{ident $self} = $parser{ident $self}->handler->graph;
 }
