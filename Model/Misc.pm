@@ -47,10 +47,11 @@ sub read_cvterm {
 	next if $_ =~ /^\s*$/;
 	next if $_ =~ /^#/;
 	my @fields = split "\t";
-	my ($cv, $db) = ($fields[0], $fields[1]);
+	my $cv = $fields[0] if $fields[0];
+	my $db = $fields[1] if $fields[1];
 	push @cvs, $cv unless grep {$_ eq $cv} @cvs;
 	push @dbs, $db unless grep {$_ eq $db} @dbs;	
-	push @cvts, \@fields;
+	push @cvts, \@fields if scalar @fields == 4;
     }
     close $cvtfh;
     $self->set_cvs(\@cvs);
