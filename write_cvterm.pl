@@ -6,6 +6,7 @@ use Model::Misc;
 
 my $cvtermfile = $ARGV[0];
 my $xmlfile = $ARGV[1];
-my $writer = new Model::Misc();
-my ($cvs, $dbs, $cvts) = $writer->read($cvtermfile);
-$writer->write($xmlfile, $cvs, $dbs, $cvts);
+my $worker = new Model::Misc();
+$worker->create_cvterm($cvtermfile);
+$worker->read_cvterm($cvtermfile);
+$worker->write_cvterm($xmlfile);
