@@ -1,5 +1,6 @@
 package Model::Paper;
 ##############################Journal/author relationship##################
+##############################gene/paper###################################
 use strict;
 use Carp;
 use Data::Dumper;
@@ -41,6 +42,7 @@ sub BUILD {
 	'REVIEW' => 'review',
 	'Chapter' => 'book chapter',
 	'MONOGR' => 'monogram',
+	'MONOGRAM' => 'monogram',
 	'REVEIW' => 'review',
 	'1991' => 'paper', #this is an error
 	'Article' => 'paper', 
@@ -64,7 +66,7 @@ sub BUILD {
 	'Meeting abstract' => 'meeting abstract',
 	'OTHER' => 'other',
 	'WormBook' => 'wormbook',
-	'WORMBOOK' => 'wormbook'
+	'WORMBOOK' => 'wormbook'  
     };
     $propertytypes{ident $self} = {
 	'Abstract' => 'pubmed_abstract',
@@ -96,11 +98,16 @@ sub read_paper {
 	$self->set_title($paper->Title->name);
 	$info{ident $self}->{title} = $paper->Title->name;
     }
+
+    my $type;
     if (defined($paper->Type)) {
-	my $type = $self->get_selftypes()->{$paper->Type->name};
-	$self->set_type($type);
-	$info{ident $self}->{type} = $type;
+	$type = $self->get_selftypes()->{$paper->Type->name};
+    } else {
+	$type = 'paper';
     }
+    $self->set_type($type);
+    $info{ident $self}->{type} = $type;
+
     if (defined($paper->Publisher)) {
 	$self->set_publisher($paper->Publisher->name);
 	$info{ident $self}->{publisher} = $paper->Publisher->name;
@@ -204,9 +211,11 @@ sub _read_book {
 	$xbook->set_publisher($publisher) if defined($publisher);
 	$info{ident $xbook}->{publisher} = $publisher if defined($publisher);
 	if (defined ($book->Type)) {
+	    print $book->Type->right->name;
 	    $xbook->set_type($selftypes{ident $self}->{$book->Type->right->name});
 	} else {
 	    $xbook->set_type('book');
+	    $info{ident $xbook}->{type} = 'book';
 	}
 	push @books, $xbook;
     }
@@ -214,14 +223,14 @@ sub _read_book {
 }
 
 sub write_paper {
-    my ($self, $doc, $op) = @_;
+    my ($self, $doc) = @_;
     my @pub;
 
     #pub element
     my $pub_el = create_ch_pub(doc => $doc,
 			       macro_id => $self->get_uniquename,
                                %{$self->get_info()});
-    $pub_el->setAttribute('op', $op) if $op;
+    $pub_el->removeAttribute('op');
     push @pub, $pub_el;
 
     #pub_dbxref element
@@ -230,7 +239,8 @@ sub write_paper {
 	    my $pd_el = create_ch_pub_dbxref(doc => $doc,
 					     pub_id => $self->get_uniquename,
 					     db => $db,
-					     accession => $accession);     
+					     accession => $accession,
+					     no_lookup => 1);     
 	    push @pub, $pd_el;
 	}
     }
@@ -238,12 +248,14 @@ sub write_paper {
     #pubprop element
     if (%{$self->get_property()}) {
 	while (my ($type, $p) = each %{$self->get_property()}) {
-	    for my $value (@$p) {
+	    for (my $i=0; $i<scalar @$p; $i++) {
+		my $value = $p->[$i];
 		next if $value eq $self->get_uniquename && $type eq 'pubmed_abstract'; #junk info
 		my $pp_el = create_ch_pubprop(doc => $doc,
 					      pub_id => $self->get_uniquename,
 					      type => $type,
-					      value => $value);     
+					      value => $value,
+					      rank => $i+1);     
 		push @pub, $pp_el;
 	    }
 	}
@@ -254,6 +266,7 @@ sub write_paper {
 	for my $book ($self->_read_book()) {
 	    my $book_el = create_ch_pub(doc => $doc,
 					%{$book->get_info()});
+	    $book_el->removeAttribute('op');
 	    push @pub, $book_el;
 	}
     }
