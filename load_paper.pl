@@ -21,15 +21,16 @@ my $class = 'Paper';
 #my $id = "WBPaper00000003";
 #my $id = "WBPaper00000070";
 #my $id= "WBPaper00000255";
-my $id = "WBPaper00000819";
+#my $id = "WBPaper00000819";
 #my $id = 'WBPaper00000???';
-#my $id = "*";
+my $id = "*";
 my $i = 0;
 for my $wb_paper ($db->fetch($class, $id)) {
     print $wb_paper->asTable;
     my $xmlfile = $dir . "$i.xml";
     open my $xmlfh, ">", $xmlfile;
     load_one_paper($wb_paper, $xmlfh);
+    close($xmlfh);
     $i++;
 }
 
@@ -61,5 +62,4 @@ sub load_one_paper {
     }
     $doc->appendChild($root);
     pretty_print($root, $xmlfh);
-    close($xmlfh);
 }
