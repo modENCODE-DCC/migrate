@@ -86,6 +86,8 @@ sub BUILD {
 sub read_paper {
     my $self = shift;
     my $paper = shift || $paper{ident $self};
+    my $simple = shift;
+
     if (defined($paper->name)) {
 	$self->set_uniquename($paper->name); 
 	$info{ident $self}->{uniquename} = $paper->name;
@@ -109,6 +111,7 @@ sub read_paper {
     $self->set_type($type);
     $info{ident $self}->{type} = $type;
 
+    unless ($simple) {
     if (defined($paper->Publisher)) {
 	$self->set_publisher($paper->Publisher->name);
 	$info{ident $self}->{publisher} = $paper->Publisher->name;
@@ -189,6 +192,7 @@ sub read_paper {
 	my $book = $paper->In_book;
 	$self->set_book([$book]);
     }
+    }
 }
 
 sub _read_book {
@@ -224,7 +228,7 @@ sub _read_book {
 }
 
 sub write_paper {
-    my ($self, $doc) = @_;
+    my ($self, $doc, $simple) = @_;
     my @pub;
 
     #pub element
@@ -235,6 +239,7 @@ sub write_paper {
     push @pub, $pub_el;
 
     #pub_dbxref element
+    unless ($simple) { 
     if (%{$self->get_dbxref()}) {
 	while (my ($db, $accession) = each %{$self->get_dbxref()}) {
 	    my $pd_el = create_ch_pub_dbxref(doc => $doc,
@@ -270,6 +275,7 @@ sub write_paper {
 	    $book_el->removeAttribute('op');
 	    push @pub, $book_el;
 	}
+    }
     }
     return @pub;
 }
