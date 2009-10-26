@@ -1,5 +1,5 @@
 package Model::GO;
-
+  
 use strict;
 use Carp;
 use Data::Dumper;
@@ -29,18 +29,38 @@ sub parse {
     $graph{ident $self} = $parser{ident $self}->handler->graph;
 }
 
-sub get_name {
-    my ($self, $acc) = @_;
-    return $graph{ident $self}->get_term($acc)->name;
+sub wb_go {
+    my ($db, $acc) = @_;
+    return $db->fetch('GO_term', $acc);
 }
+
+#### WormBase goterm acc. number might be obsolete or alt_id. 
+#sub get_name {
+#    my ($self, $acc) = @_;
+#    return $graph{ident $self}->get_term($acc)->name;
+#}
+
+#sub get_namespace {
+#    my ($self, $acc) = @_;
+#    return $graph{ident $self}->get_term($acc)->namespace;
+#}
+
+####Assume Wormbase goterm name does NOT change from GO release to release.
+sub get_name {
+    my ($self, $wb_go) = @_;
+    return $graph{ident $self}->get_term_by_name($wb_go->Term->name)->name;
+}
+
+sub get_namespace {
+    my ($self, $wb_go) = @_;
+    return $graph{ident $self}->get_term_by_name($wb_go->Term->name)->namespace;
+}
+
 sub write_cvterm {
-    my ($self, $doc, $acc) = @_;
-    my $term = $graph{ident $self}->get_term($acc);
-    my $name = $term->name;
-    my $namespace = $term->namespace;
-    if ($term->is_obsolete()) {
-	$name .= " (obsolete $acc)";
-    }
+    my ($self, $db, $doc, $acc) = @_;
+    my $go = wb_go($db, $acc);
+    my $name = $self->get_name($go, $acc);
+    my $namespace = $self->get_namespace($go, $acc);
     my $cvterm = create_ch_cvterm(doc => $doc,
 				  name => $name,
 				  cv => $namespace);
