@@ -11,9 +11,9 @@ use GFF3::GFF3Rec;
 use Model::GO;
 
 my $gfffile = $ARGV[0];
-my $xmlfile = $ARGV[1];
+my $dir = $ARGV[1];
+$dir .= '/' unless $dir =~ /\/$/;
 open my $gfffh, "<", $gfffile;
-open my $xmlfh, ">", $xmlfile;
 my @id;
 print "parsing GFF3 ...\n";
 while (<$gfffh>) {
@@ -29,15 +29,9 @@ while (<$gfffh>) {
 print "parsing GO obo file...\n";
 my $go_file = "/home/zheng/migrate/gene_ontology.1_2.obo" ;
 my $go = new Model::GO({go_obo_file => $go_file});
+$go->parse();
 
-my $doc = new XML::DOM::Document;
-my $root = $doc->createElement("chado");
-#append elegans as the default organism
-my $worm = new Model::Worm({genus => 'Caenorhabditis',
-			    species => 'elegans',
-			   });
-my $organism = $worm->write_organism($doc);
-$root->appendChild($organism);
+
 
 print "connect to Acedb...\n";
 my $host = 'localhost';
@@ -50,18 +44,36 @@ my $db = Ace->connect(-host => $host, -port => $port)
 my $class = 'Gene';
 print "create xml file...\n";
 for my $id (@id) {
-    my $wb_gene = $db->fetch($class, $id);    
+    print $id, "\n";
+    my $wb_gene = $db->fetch($class, $id);
+    #print $wb_gene->asTable;
+    my $name = $wb_gene->name;
+    my $xmlfile = $dir . "$name.xml";
+    open my $xmlfh, ">", $xmlfile;
     my $gene = new Model::Gene({gene => $wb_gene});
 
+    my $doc = new XML::DOM::Document;
+    my $root = $doc->createElement("chado");
+    #append elegans as the default organism
+    my $worm = new Model::Worm({genus => 'Caenorhabditis',
+				species => 'elegans',
+			       });
+    my $organism = $worm->write_organism($doc);
+    $root->appendChild($organism);
     my $feature = $gene->write_feature($doc, $organism);
     $root->appendChild($feature);
 
-    $gene->set_go_accs();
-    for my $goterm ($gene->write_goterms($doc, $feature, $go)) {
-	$root->appendChild($goterm->[0]);
-	$root->appendChild($goterm->[1]);
+    $gene->set_go();
+    my ($fcs, $fcps) = $gene->write_goterms($doc, $feature, $db, $go);
+    for my $fc (@$fcs) {
+	$root->appendChild($fc);
     }
+    for my $fcs (@$fcps) {
+	$root->appendChild($fcs);
+    }
+
+    $doc->appendChild($root);
+    pretty_print($root, $xmlfh); 
+    close($xmlfh);
 }
 
-$doc->appendChild($root);
-pretty_print($root, $xmlfh); 
