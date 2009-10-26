@@ -45,15 +45,26 @@ sub wb_go {
 #    return $graph{ident $self}->get_term($acc)->namespace;
 #}
 
-####Assume Wormbase goterm name does NOT change from GO release to release.
 sub get_name {
     my ($self, $wb_go) = @_;
-    return $graph{ident $self}->get_term_by_name($wb_go->Term->name)->name;
+    my $t;
+    eval {$t = $graph{ident $self}->get_term($wb_go->name)};
+    if ($@) {
+	return $graph{ident $self}->get_term_by_name($wb_go->Term->name)->name;
+    } else {
+	return $t->name;
+    }
 }
 
 sub get_namespace {
     my ($self, $wb_go) = @_;
-    return $graph{ident $self}->get_term_by_name($wb_go->Term->name)->namespace;
+    my $t;
+    eval {$t = $graph{ident $self}->get_term($wb_go->name)};
+    if ($@) {    
+	return $graph{ident $self}->get_term_by_name($wb_go->Term->name)->namespace;
+    } else {
+	return $t->namespace;
+    }
 }
 
 sub write_cvterm {
