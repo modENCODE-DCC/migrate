@@ -16,15 +16,16 @@ use Model::DBXref;
 use Model::Transcript;
 use Model::CDS;
 use Model::Pseudogene;
+use Model::Paper;
+
 
 my %gene            :ATTR( :get<gene>          :default<undef> );
 my %name            :ATTR( :set<name>          :default<undef> );
 my %public_name     :ATTR( :set<public_name>   :default<undef> );
 my %worm            :ATTR( :set<worm>          :default<undef> );
 my %default_dbname  :ATTR(                     :default<'RefSeq'>);
-my %go_accs         :ATTR( :get<go_accs>       :default<{}>);
-#my %go_accs         :ATTR( :get<go_accs>       :default<[]>);
-#my %go_codes        :ATTR( :get<go_codes>      :default<[]>);
+my %go              :ATTR( :get<go>            :default<{}>);
+my %papers          :ATTR( :get<papers>        :default<[]>);
 
 sub BUILD {
     my ($self, $ident, $args) = @_;
@@ -77,7 +78,7 @@ sub get_public_name {
 }
 
 sub write_feature {
-    my ($self, $doc, $organism, $operation) = @_;
+    my ($self, $doc, $organism, $operation, $with_id) = @_;
     my $feature = create_ch_feature(doc => $doc,
 				    uniquename => $self->get_name(),
 				    name => $self->get_public_name(),
@@ -88,7 +89,8 @@ sub write_feature {
 											      db => 'SO',
 											      accession => '0000704')),
 				    organism_id => $organism->getAttribute('id'),
-				    macro_id => $self->get_name());
+				    macro_id => $self->get_name(),
+				    with_id => $with_id);
     $feature->setAttribute('op', $operation) if $operation;
     return $feature;
 }
@@ -167,42 +169,85 @@ sub get_pseudogene {
     return @pseudogene;    
 }
 
-sub set_go_accs {
+sub set_go {
     my $self = shift;
-    my @go_accs = names_at($gene{ident $self}, 'Gene_info.GO_term');
-    print "###num of go terms ", scalar @go_accs, " ";
-    my @go_codes = names_at($gene{ident $self}, 'Gene_info.GO_term.?GO_term.XREF.Gene.?GO_code');
-    print "###num of go codes ", scalar @go_codes;
-    for(my $i=0; $i<scalar @go_accs; $i++) {
-	$go_accs{ident $self}->{$go_accs[$i]} = $go_codes[$i];
+    my %go_accs; #go_term as hash key
+    for my $goterm (at($gene{ident $self}, 'Gene_info.GO_term')) {
+	my $ch = {}; #go_code as hash key
+	for my $gocode ($goterm->col()) {
+	    my $eh = [];
+	    for my $evi ($gocode->col(2)) {
+		push @$eh, $evi; #evidence ace obj
+	    }
+	    $ch->{$gocode} = $eh;
+	}
+	$go_accs{$goterm} = $ch;
     }
+    $go{ident $self} = \%go_accs;
 }
 
-#sub set_go_codes {
-#    my $self = shift;
-#    my @go_codes = names_at($gene{ident $self}, 'Gene_info.GO_term.?GO_term.XREF.Gene.?GO_code');
-#    $go_codes{ident $self}->{$} = \@go_codes;
-#}
+sub set_papers {
+    my $self = shift;
+    my @papers = at($gene{ident $self}, 'Reference.?Paper');
+    $papers{ident $self} = \@papers;
+}
+
+sub write_paper {
+    my ($self, $doc, $organism) = @_;
+    my @ele;
+    my $feature = $self->write_feature($doc, $organism, undef);
+    push @ele, $feature;
+    for my $wb_paper (@{$self->get_papers()}) {
+	my $paper = new Model::Paper({paper => $wb_paper});
+	$paper->read_paper(undef, 1);
+	my @pub = $paper->write_paper($doc, 1);
+	my $fp_el = create_ch_feature_pub(doc => $doc,
+					  feature_id => $self->get_name(),
+					  pub_id => $pub[0]);
+	push @ele, $fp_el;
+    }
+    return @ele;
+}
 
 sub write_goterms {
-    my ($self, $doc, $feature, $go) = @_;
+    my ($self, $doc, $feature, $db, $gg) = @_;
     my @fcs;
-    while ( my ($go_acc, $go_code) = each %{$self->get_go_accs()} ) {
-	my $cvterm = $go->write_cvterm($doc, $go_acc);
-	my $id = "feature_cvterm_goterm_$go_acc";
-	my $fc = create_ch_feature_cvterm(doc => $doc,
-					  feature_id => $feature->getAttribute('id'),
-					  cvterm_id => $cvterm,
-					  pub => 'WormBase');
-	$fc->setAttribute('id', $id);
-	my $fcp = create_ch_feature_cvtermprop(doc => $doc,
-					       feature_cvterm_id => $id,
-					       type => 'evidence name',
-					       cvname => 'WormBase miscellaneous CV',
-					       value => $go_code);
-	push @fcs, [$fc, $fcp];
+    my @fcps;
+    while ( my ($goterm, $ch) = each %{$self->get_go()} ) {
+	my $cvterm = $gg->write_cvterm($db, $doc, $goterm);
+	my $id = "feature_cvterm_goterm_$goterm";
+	my $fc_created = 0;
+	while ( my ($gocode, $eh) = each %$ch ) {
+	    my $fcp = create_ch_feature_cvtermprop(doc => $doc,
+						   feature_cvterm_id => $id,
+						   type => 'evidence name',
+						   cvname => 'WormBase miscellaneous CV',
+						   value => $gocode);
+	    push @fcps, $fcp;
+	    for my $evi (@$eh) {
+		if ($evi->class eq 'Paper') {
+		    my $fc = create_ch_feature_cvterm(doc => $doc,
+						      feature_id => $feature->getAttribute('id'),
+						      cvterm_id => $cvterm,
+						      pub => $evi->name);
+		    $fc->setAttribute('id', $id);
+		    push @fcs, $fc;
+		    $fc_created = 1;
+		} else {
+		    #create 
+		}
+	    }
+	}
+	unless ($fc_created) {
+	    my $fc = create_ch_feature_cvterm(doc => $doc,
+					      feature_id => $feature->getAttribute('id'),
+					      cvterm_id => $cvterm,
+					      pub => 'WormBase');
+	    $fc->setAttribute('id', $id);
+	    push @fcs, $fc;
+	}	
     }
-    return @fcs;
+    return (\@fcs, \@fcps);
 }
 
 1;
