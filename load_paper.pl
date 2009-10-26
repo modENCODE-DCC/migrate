@@ -23,7 +23,8 @@ my $class = 'Paper';
 #my $id= "WBPaper00000255";
 #my $id = "WBPaper00000819";
 #my $id = 'WBPaper00000???';
-my $id = "*";
+#my $id = "*";
+my $id = 'WBPaper00005185';
 my $i = 0;
 for my $wb_paper ($db->fetch($class, $id)) {
     print $wb_paper->asTable;
