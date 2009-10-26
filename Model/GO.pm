@@ -12,6 +12,7 @@ use Chado::PrettyPrintDom;
 my %parser          :ATTR( :name<parser>         :default<undef> );
 my %go_obo_file     :ATTR( :name<go_obo_file>    :default<undef> );
 my %graph           :ATTR( :name<graph>          :default<undef> );
+my %alt_ids         :ATTR( :name<alt_ids>        :default<{}> );
 my %selftypes       :ATTR( :name<selftypes>      :default<undef> );
 
 sub BUILD {
@@ -48,30 +49,28 @@ sub wb_go {
 sub get_name {
     my ($self, $wb_go) = @_;
     my $t;
-    eval {$t = $graph{ident $self}->get_term($wb_go->name)};
-    if ($@) {
-	return $graph{ident $self}->get_term_by_name($wb_go->Term->name)->name;
-    } else {
-	return $t->name;
+    eval { $t = $graph{ident $self}->get_term($wb_go->name) };
+    unless ($t) {
+	$t = $graph{ident $self}->get_term_by_name($wb_go->Term->name);
     }
+    return $t->name;
 }
 
 sub get_namespace {
     my ($self, $wb_go) = @_;
     my $t;
     eval {$t = $graph{ident $self}->get_term($wb_go->name)};
-    if ($@) {    
-	return $graph{ident $self}->get_term_by_name($wb_go->Term->name)->namespace;
-    } else {
-	return $t->namespace;
+    unless ($t) {    
+	$t = $graph{ident $self}->get_term_by_name($wb_go->Term->name);
     }
+    return $t->namespace;
 }
 
 sub write_cvterm {
     my ($self, $db, $doc, $acc) = @_;
     my $go = wb_go($db, $acc);
-    my $name = $self->get_name($go, $acc);
-    my $namespace = $self->get_namespace($go, $acc);
+    my $name = $self->get_name($go);
+    my $namespace = $self->get_namespace($go);
     my $cvterm = create_ch_cvterm(doc => $doc,
 				  name => $name,
 				  cv => $namespace);
