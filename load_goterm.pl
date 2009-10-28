@@ -13,9 +13,10 @@ use Model::GO;
 my $gfffile = $ARGV[0];
 my $dir = $ARGV[1];
 $dir .= '/' unless $dir =~ /\/$/;
-open my $gfffh, "<", $gfffile;
-my @id;
+
 print "parsing GFF3 ...\n";
+my @id;
+open my $gfffh, "<", $gfffile;
 while (<$gfffh>) {
     chomp;
     next if $_ =~ /^\s*$/;
@@ -31,8 +32,6 @@ my $go_file = "/home/zheng/migrate/gene_ontology.1_2.obo" ;
 my $go = new Model::GO({go_obo_file => $go_file});
 $go->parse();
 
-
-
 print "connect to Acedb...\n";
 my $host = 'localhost';
 my $port = 23100;
@@ -42,13 +41,12 @@ my $db = Ace->connect(-host => $host, -port => $port)
     || croak("Couldn't open database at host $host port $port");
 
 my $class = 'Gene';
-print "create xml file...\n";
+print "create xml file for:\n";
 for my $id (@id) {
-    print $id, "\n";
+    print $id, "...\n";
     my $wb_gene = $db->fetch($class, $id);
     #print $wb_gene->asTable;
-    my $name = $wb_gene->name;
-    my $xmlfile = $dir . "$name.xml";
+    my $xmlfile = $dir . "$id.xml";
     open my $xmlfh, ">", $xmlfile;
     my $gene = new Model::Gene({gene => $wb_gene});
 
