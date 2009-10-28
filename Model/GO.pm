@@ -27,10 +27,20 @@ sub parse {
     my $parser = new GO::Parser({handler=>'obj',use_cache=>1});
     $parser->parse($go_obo_file{ident $self});
     $parser{ident $self} = $parser;
-    $graph{ident $self} = $parser{ident $self}->handler->graph;
+    my $gr = $parser{ident $self}->handler->graph;
+    $graph{ident $self} = $gr;
+    my %ai;
+    my $it = $gr->create_iterator();
+    while (my $nt = $it->next_node()) {
+	my $acc = $nt->acc;
+	for my $syn (@{$nt->alt_id_list()}) {
+	    $ai{$syn} = $acc;
+	}
+    }
+    $alt_ids{ident $self} = \%ai;
 }
 
-sub wb_go {
+sub get_wb_go {
     my ($db, $acc) = @_;
     return $db->fetch('GO_term', $acc);
 }
@@ -46,29 +56,29 @@ sub wb_go {
 #    return $graph{ident $self}->get_term($acc)->namespace;
 #}
 
-sub get_name {
+sub get_term {
     my ($self, $wb_go) = @_;
     my $t;
     eval { $t = $graph{ident $self}->get_term($wb_go->name) };
     unless ($t) {
-	$t = $graph{ident $self}->get_term_by_name($wb_go->Term->name);
+	$t = $graph{ident $self}->get_term($alt_ids{ident $self}->{$wb_go->name});
     }
-    return $t->name;
+    return $t;
+}
+
+sub get_name {
+    my ($self, $wb_go) = @_;
+    return $self->get_term($wb_go)->name;
 }
 
 sub get_namespace {
     my ($self, $wb_go) = @_;
-    my $t;
-    eval {$t = $graph{ident $self}->get_term($wb_go->name)};
-    unless ($t) {    
-	$t = $graph{ident $self}->get_term_by_name($wb_go->Term->name);
-    }
-    return $t->namespace;
+    return $self->get_term($wb_go)->namespace;
 }
 
 sub write_cvterm {
     my ($self, $db, $doc, $acc) = @_;
-    my $go = wb_go($db, $acc);
+    my $go = get_wb_go($db, $acc);
     my $name = $self->get_name($go);
     my $namespace = $self->get_namespace($go);
     my $cvterm = create_ch_cvterm(doc => $doc,
