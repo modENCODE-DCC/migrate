@@ -176,14 +176,17 @@ sub set_go {
 	my $ch = {}; #go_code as hash key
 	for my $gocode ($goterm->col()) {
 	    my $eh = [];
-	    for my $evi ($gocode->col(2)) {
-		push @$eh, $evi; #evidence ace obj
+	    for my $evi ($gocode->col()) {
+		for my $e ($evi->col()) {
+		    push @$eh, $e;
+		} #evidence ace obj
 	    }
 	    $ch->{$gocode} = $eh;
 	}
 	$go_accs{$goterm} = $ch;
     }
     $go{ident $self} = \%go_accs;
+    #print Dumper(%go_accs);
 }
 
 sub set_papers {
@@ -211,43 +214,60 @@ sub write_paper {
 
 sub write_goterms {
     my ($self, $doc, $feature, $db, $gg) = @_;
+    my @cvts;
     my @fcs;
     my @fcps;
     while ( my ($goterm, $ch) = each %{$self->get_go()} ) {
 	my $cvterm = $gg->write_cvterm($db, $doc, $goterm);
-	my $id = "feature_cvterm_goterm_$goterm";
+	my $cvt_id = 'cvterm' . $goterm;
+	$cvterm->setAttribute('id', $cvt_id);
+	push @cvts, $cvterm;
 	my $fc_created = 0;
 	while ( my ($gocode, $eh) = each %$ch ) {
-	    my $fcp = create_ch_feature_cvtermprop(doc => $doc,
-						   feature_cvterm_id => $id,
-						   type => 'evidence name',
-						   cvname => 'WormBase miscellaneous CV',
-						   value => $gocode);
-	    push @fcps, $fcp;
 	    for my $evi (@$eh) {
 		if ($evi->class eq 'Paper') {
-		    my $fc = create_ch_feature_cvterm(doc => $doc,
-						      feature_id => $feature->getAttribute('id'),
-						      cvterm_id => $cvterm,
-						      pub => $evi->name);
-		    $fc->setAttribute('id', $id);
-		    push @fcs, $fc;
-		    $fc_created = 1;
-		} else {
-		    #create 
+		    $fc_created++;
+		}
+	    }
+	    if ($fc_created == 0) {
+		my $fc = create_ch_feature_cvterm(doc => $doc,
+						  feature_id => $feature->getAttribute('id'),
+						  cvterm_id => $cvt_id,
+						  pub => 'WormBase');
+		my $id = "feature_cvterm_goterm_$goterm";
+		$fc->setAttribute('id', $id);
+		push @fcs, $fc;
+		my $fcp = create_ch_feature_cvtermprop(doc => $doc,
+						       feature_cvterm_id => $id,
+						       type => 'evidence name',
+						       cvname => 'WormBase miscellaneous CV',
+						       value => $gocode);
+		push @fcps, $fcp;		
+	    }
+	    else {
+		my $i = 1;
+		for my $evi (@$eh) {
+		    if ($evi->class eq 'Paper') {
+			my $fc = create_ch_feature_cvterm(doc => $doc,
+							  feature_id => $feature->getAttribute('id'),
+							  cvterm_id => $cvt_id,
+							  pub => $evi->name);
+			my $id = "feature_cvterm_goterm_$goterm" . "_$i";
+			$fc->setAttribute('id', $id);
+			push @fcs, $fc;
+			my $fcp = create_ch_feature_cvtermprop(doc => $doc,
+							       feature_cvterm_id => $id,
+							       type => 'evidence name',
+							       cvname => 'WormBase miscellaneous CV',
+							       value => $gocode);
+			push @fcps, $fcp;
+			$i++;
+		    }
 		}
 	    }
 	}
-	unless ($fc_created) {
-	    my $fc = create_ch_feature_cvterm(doc => $doc,
-					      feature_id => $feature->getAttribute('id'),
-					      cvterm_id => $cvterm,
-					      pub => 'WormBase');
-	    $fc->setAttribute('id', $id);
-	    push @fcs, $fc;
-	}	
     }
-    return (\@fcs, \@fcps);
+    return (\@cvts, \@fcs, \@fcps);
 }
 
 1;
