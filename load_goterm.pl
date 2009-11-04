@@ -62,7 +62,10 @@ for my $id (@id) {
     $root->appendChild($feature);
 
     $gene->set_go();
-    my ($fcs, $fcps) = $gene->write_goterms($doc, $feature, $db, $go);
+    my ($cvts, $fcs, $fcps) = $gene->write_goterms($doc, $feature, $db, $go);
+    for my $cvt (@$cvts) {
+	$root->appendChild($cvt);
+    }    
     for my $fc (@$fcs) {
 	$root->appendChild($fc);
     }
