@@ -59,6 +59,7 @@ sub get_wb_go {
 sub get_term {
     my ($self, $wb_go) = @_;
     my $t;
+    #alt_id?
     eval { $t = $graph{ident $self}->get_term($wb_go->name) };
     unless ($t) {
 	$t = $graph{ident $self}->get_term($alt_ids{ident $self}->{$wb_go->name});
@@ -68,7 +69,13 @@ sub get_term {
 
 sub get_name {
     my ($self, $wb_go) = @_;
-    return $self->get_term($wb_go)->name;
+    my $t = $self->get_term($wb_go);
+    my $name = $t->name;
+    if ($t->is_obsolete) {
+	return $name . ' (obsolete ' . $t->acc . ')';
+    } else {
+	return $name;
+    }
 }
 
 sub get_namespace {
@@ -79,11 +86,23 @@ sub get_namespace {
 sub write_cvterm {
     my ($self, $db, $doc, $acc) = @_;
     my $go = get_wb_go($db, $acc);
+    my $t = $self->get_term($go);
+    my $acc_num = $t->acc;
+    $acc_num =~ s/GO://;
+    my $dbxref = create_ch_dbxref(doc => $doc,
+				  db => "GO",
+				  accession => $acc_num);
+    $dbxref->removeAttribute('op'); #for new GO terms not loaded into chado
+    
     my $name = $self->get_name($go);
     my $namespace = $self->get_namespace($go);
+    my $obsolete = $t->is_obsolete ?  1 : 0 ;
     my $cvterm = create_ch_cvterm(doc => $doc,
 				  name => $name,
-				  cv => $namespace);
+				  cv => $namespace,
+				  is_obsolete => $obsolete,
+				  dbxref_id => $dbxref);
+    $cvterm->removeAttribute('op'); #insert or update, a little bit risky
     return $cvterm;
 }
 
