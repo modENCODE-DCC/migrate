@@ -18,14 +18,15 @@ use Model::CDS;
 use Model::Pseudogene;
 use Model::Paper;
 
-
 my %gene            :ATTR( :get<gene>          :default<undef> );
 my %name            :ATTR( :set<name>          :default<undef> );
 my %public_name     :ATTR( :set<public_name>   :default<undef> );
+my %sequence_name   :ATTR( :set<sequence_name> :default<undef> );
 my %worm            :ATTR( :set<worm>          :default<undef> );
 my %default_dbname  :ATTR(                     :default<'RefSeq'>);
 my %go              :ATTR( :get<go>            :default<{}>);
 my %papers          :ATTR( :get<papers>        :default<[]>);
+my %description     :ATTR( :get<description>   :default<{}>);
 
 sub BUILD {
     my ($self, $ident, $args) = @_;
@@ -75,6 +76,11 @@ sub get_name {
 sub get_public_name {
     my ($self) = @_;
     return $gene{ident $self}->Public_name->name;
+}
+
+sub get_sequence_name {
+    my ($self) = @_;
+    return $gene{ident $self}->Sequence_name->name;
 }
 
 sub write_feature {
@@ -132,11 +138,52 @@ sub write_feature_dbxref {
     return $feature;
 }
 
-
-sub get_concise_description {
+sub get_description {
     my ($self) = @_;
-    return lc($gene{ident $self}->Concise_description->name);
+    my @tags = qw[Provisional_description 
+                  Detailed_description
+                  Concise_description
+                  Other_description
+                  Sequence_features
+                  Functional_pathway
+                  Functional_physical_interaction
+                  Biological_process
+                  Molecular_function
+                  Expression];
+    my $desc = {};
+    for my $tag (@tags) {
+	if ($gene{ident $self}->$tag) {
+	    $desc->{$tag} = $gene{ident $self}->$tag->name;
+	}
+    }
+    $description{ident $self} = $desc;
 }
+
+sub write_featureprop {
+    my ($self, $doc) = @_;
+}
+
+sub write_feature_synonym {
+    my ($self, $doc, $organism) = @_;
+    #create a feature_id element
+    #my $feature = $self->write_feature($doc, $organism, 'lookup', 1);
+    my $name = $self->get_sequence_name();
+    #my $type = 'sequence name';
+    my $type = 'exact';
+    my $pub = 'WormBase';
+    my $fs = create_ch_feature_synonym(doc => $doc,
+				       #feature_id => $feature,
+				       name => $name,
+				       type => $type,
+				       pub => $pub);
+    return $fs;
+}
+
+sub get_seq_features {
+    my ($self) = @_;
+    return lc($gene{ident $self}->Sequence_features->name);    
+}
+
 
 sub get_transcript {
     my ($self) = @_;
