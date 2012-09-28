@@ -9,7 +9,7 @@ my ($db, $type) = @ARGV;
 my $host = 'localhost';
 my $port = '5432';
 my $user = 'zheng';
-my $password = 'weigaocn';
+my $password = 'pw';
 my $source = "dbi:Pg:dbname=$db;host=$host;port=$port";
 my $dbh = DBI->connect($source, $user, $password) or die "can't connect to $source: $dbh->errstr\n";
 $dbh->{RaiseError} = 0;
